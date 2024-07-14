@@ -22,6 +22,12 @@ struct ContentView: View {
     var body: some View {
         
         VStack {
+            let image = Image(.img)
+            
+            ShareLink(item: image, preview: SharePreview("MAC", image: image)) {
+                Label("Click to share", systemImage: "airplane")
+            }
+            ShareLink(item: URL(string: "www.apple.com")!, subject: Text("Apple Website"), message: Text("Its a very beautiful site"))
             PhotosPicker(selection: $pickerItems, maxSelectionCount: 3, matching: .any(of: [.images, .not(.screenshots)])) {
                 Label("Select a picture", systemImage: "photo")
             }
