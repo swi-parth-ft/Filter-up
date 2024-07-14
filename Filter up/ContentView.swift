@@ -94,12 +94,12 @@ struct ContentView: View {
             .padding([.horizontal, .bottom])
             .navigationTitle("Filter up")
             .toolbar {
-                Button("Share", systemImage: "square.and.arrow.up") {
-                    if let processedImage {
-                        ShareLink(item: processedImage, preview: SharePreview("\(currentFilter)ed Image", image: processedImage))
-                    }
-                }
-                .tint(.orange)
+                if let processedImage = processedImage {
+                       ShareLink(item: processedImage, preview: SharePreview("Filtered Image", image: processedImage)) {
+                           Label("Share", systemImage: "square.and.arrow.up")
+                       }
+                       .tint(.orange)
+                   }
                 
               
             }
