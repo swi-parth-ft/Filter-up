@@ -11,104 +11,80 @@ import PhotosUI
 import StoreKit
 
 struct ContentView: View {
+
     
-    @State private var showingConfirmation = false
-    @State private var backgroundColor = Color.white
-    @State private var image: Image?
+    @State private var processedImage: Image?
+    @State private var filterIntensity = 0.5
+    @State private var selectedItem: PhotosPickerItem?
     
-    @State private var pickerItems = [PhotosPickerItem]()
-    @State private var selectedImages = [Image]()
+    @State private var currentFilter = CIFilter.sepiaTone()
+    let context = CIContext()
     
     
     @Environment(\.requestReview) var requestReview
     
     var body: some View {
-        
-        VStack {
-            
-            Button("Leave a review") {
-                requestReview()
-            }
-            
-            let image = Image(.img)
-            
-            ShareLink(item: image, preview: SharePreview("MAC", image: image)) {
-                Label("Click to share", systemImage: "airplane")
-            }
-            ShareLink(item: URL(string: "www.apple.com")!, subject: Text("Apple Website"), message: Text("Its a very beautiful site"))
-            PhotosPicker(selection: $pickerItems, maxSelectionCount: 3, matching: .any(of: [.images, .not(.screenshots)])) {
-                Label("Select a picture", systemImage: "photo")
-            }
-            
-            ScrollView {
-                ForEach(0..<selectedImages.count, id: \.self) { i in
-                    selectedImages[i]
-                        .resizable()
-                        .scaledToFit()
-                }
-            }
-            
-        }
-        .onChange(of: pickerItems) {
-            Task {
-                selectedImages.removeAll()
-                for item in pickerItems {
-                    if let loadedImage = try await item.loadTransferable(type: Image.self) {
-                        selectedImages.append(loadedImage)
+        NavigationStack {
+            VStack {
+                Spacer()
+                
+                PhotosPicker(selection: $selectedItem) {
+                    if let processedImage {
+                        processedImage
+                            .resizable()
+                            .scaledToFit()
+                    } else {
+                        ContentUnavailableView("No Picture", systemImage: "photo.badge.plus", description: Text("Tap to import a photo"))
                     }
                 }
+                .buttonStyle(.plain)
+                .onChange(of: selectedItem, loadImage)
                 
-                //selectedImage = try await pickerItem?.loadTransferable(type: Image.self)
+                
+                Spacer()
+                
+                HStack {
+                    Text("Intensity")
+                    Slider(value: $filterIntensity)
+                        .onChange(of: filterIntensity, applyProcessing)
+                }
+                HStack {
+                    Button("Change Filter", action: changeFilter)
+                    
+                    Spacer()
+                }
             }
+            .padding([.horizontal, .bottom])
+            .navigationTitle("Instafilter")
         }
-        
-//        ContentUnavailableView {
-//            Label("No snippets", systemImage: "swift")
-//        } description: {
-//            Text("You don't have any saved snippets yet.")
-//        } actions: {
-//            Button("Create Snippet") {
-//                // create a snippet
-//            }
-//            .buttonStyle(.borderedProminent)
-//        }
-        
-//        VStack {
-//            image?
-//                .resizable()
-//                .scaledToFit()
-//            
-//            Button("Filter-Up") {
-//                loadImage()
-//            }
-//        }
-     //   .onAppear(perform: loadImage)
+
         
     }
     
-//    func loadImage() {
-//        let inputImage = UIImage(resource: .img)
-//        let beginImage = CIImage(image: inputImage)
-//        let context = CIContext()
-//        let currentFilter = CIFilter.crystallize()
-//        
-//        currentFilter.inputImage = beginImage
-//        let inputKeys = currentFilter.inputKeys
-//        
-//        let amount = 1
-//        if inputKeys.contains(kCIInputIntensityKey) { currentFilter.setValue(amount, forKey: kCIInputIntensityKey)}
-//        if inputKeys.contains(kCIInputRadiusKey) { currentFilter.setValue(amount * 200, forKey: kCIInputRadiusKey)}
-//        if inputKeys.contains(kCIInputScaleKey) { currentFilter.setValue(amount * 10, forKey: kCIInputScaleKey)}
-//        
-//        
-//        
-//        if let outputImage = currentFilter.outputImage {
-//            if let cgImage = context.createCGImage(outputImage, from: outputImage.extent) {
-//                let uiImage = UIImage(cgImage: cgImage)
-//                image = Image(uiImage: uiImage)
-//            }
-//        }
-//    }
+    func changeFilter() {
+        
+    }
+    
+    func loadImage() {
+        Task {
+            guard let imageData = try await selectedItem?.loadTransferable(type: Data.self) else { return }
+                guard let inputImage = UIImage(data: imageData) else { return }
+            
+            let beginImage = CIImage(image: inputImage)
+            currentFilter.setValue(beginImage, forKey: kCIInputImageKey)
+            applyProcessing()
+            
+        }
+    }
+    
+    func applyProcessing() {
+        currentFilter.intensity = Float(filterIntensity)
+        guard let outputImage = currentFilter.outputImage else { return }
+        guard let cgImage = context.createCGImage(outputImage, from: outputImage.extent) else { return }
+        let uiImage = UIImage(cgImage: cgImage)
+        processedImage = Image(uiImage: uiImage)
+    }
+
 }
 
 #Preview {
